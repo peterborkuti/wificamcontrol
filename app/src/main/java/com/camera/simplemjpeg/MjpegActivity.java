@@ -6,6 +6,7 @@ import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
+import android.util.Base64;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -14,6 +15,7 @@ import android.view.MenuItem;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.params.HttpConnectionParams;
 import org.apache.http.params.HttpParams;
@@ -44,6 +46,7 @@ public class MjpegActivity extends Activity {
     private boolean suspending = false;
 
     final Handler handler = new Handler();
+    private SensorTest sensorTest;
 
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -85,6 +88,10 @@ public class MjpegActivity extends Activity {
 
         setTitle(R.string.title_connecting);
         new DoRead().execute(URL);
+
+        sensorTest = new SensorTest(this);
+        sensorTest.listSensors();
+        sensorTest.setListeners();
     }
 
 
@@ -96,6 +103,9 @@ public class MjpegActivity extends Activity {
                 new DoRead().execute(URL);
                 suspending = false;
             }
+        }
+        if (sensorTest != null) {
+            sensorTest.setListeners();
         }
 
     }
@@ -113,6 +123,9 @@ public class MjpegActivity extends Activity {
                 mv.stopPlayback();
                 suspending = true;
             }
+        }
+        if (sensorTest != null) {
+            sensorTest.unsetListeners();
         }
     }
 
@@ -203,7 +216,10 @@ public class MjpegActivity extends Activity {
     }
 
     public class DoRead extends AsyncTask<String, Void, MjpegInputStream> {
-        protected MjpegInputStream doInBackground(String... url) {
+        protected MjpegInputStream doInBackground(String... params) {
+            String url = "http://192.168.1.126:81/video.cgi";
+            String userName = "****";
+            String password = "****";
             //TODO: if camera has authentication deal with it and don't just not work
             HttpResponse res = null;
             DefaultHttpClient httpclient = new DefaultHttpClient();
@@ -212,7 +228,7 @@ public class MjpegActivity extends Activity {
             HttpConnectionParams.setSoTimeout(httpParams, 5 * 1000);
             if (DEBUG) Log.d(TAG, "1. Sending http request");
             try {
-                res = httpclient.execute(new HttpGet(URI.create(url[0])));
+                res = httpclient.execute(Util.getRequest(url, userName, password));
                 if (DEBUG)
                     Log.d(TAG, "2. Request finished, status = " + res.getStatusLine().getStatusCode());
                 if (res.getStatusLine().getStatusCode() == 401) {
